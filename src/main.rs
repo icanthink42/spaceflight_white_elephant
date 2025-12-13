@@ -29,6 +29,8 @@ struct App {
     input_state: InputState,
     time_accumulator: f64,
     zoom_level: f64,
+    time_warp: f64,
+    show_absolute_trajectories: bool,
 }
 
 impl ApplicationHandler for App {
@@ -65,7 +67,7 @@ impl ApplicationHandler for App {
             WindowEvent::KeyboardInput { event, .. } => {
                 self.input_state.handle_key_event(&event);
 
-                // Handle zoom keys
+                // Handle zoom, time warp, and display mode keys
                 if event.state == ElementState::Pressed {
                     match event.physical_key {
                         PhysicalKey::Code(KeyCode::Equal) | PhysicalKey::Code(KeyCode::NumpadAdd) => {
@@ -73,6 +75,17 @@ impl ApplicationHandler for App {
                         }
                         PhysicalKey::Code(KeyCode::Minus) | PhysicalKey::Code(KeyCode::NumpadSubtract) => {
                             self.zoom_level /= 1.2;
+                        }
+                        PhysicalKey::Code(KeyCode::Period) => {
+                            self.time_warp *= 2.0;
+                            self.time_warp = self.time_warp.min(32.0);
+                        }
+                        PhysicalKey::Code(KeyCode::Comma) => {
+                            self.time_warp /= 2.0;
+                            self.time_warp = self.time_warp.max(1.0);
+                        }
+                        PhysicalKey::Code(KeyCode::Tab) => {
+                            self.show_absolute_trajectories = !self.show_absolute_trajectories;
                         }
                         _ => {}
                     }
@@ -108,8 +121,8 @@ impl ApplicationHandler for App {
                     // Apply input to game (this will recalculate trajectory if input changed)
                     self.input_state.apply_to_game(game, dt);
 
-                    // Accumulate time and advance trajectory steps based on real elapsed time
-                    self.time_accumulator += dt;
+                    // Accumulate time with time warp multiplier and advance trajectory steps
+                    self.time_accumulator += dt * self.time_warp;
 
                     while self.time_accumulator >= TRAJECTORY_DT {
                         game.advance_trajectory();
@@ -137,7 +150,7 @@ impl ApplicationHandler for App {
 
                     let mut buffer = surface.buffer_mut().unwrap();
 
-                    render_game(&mut buffer, width, height, game, self.input_state.thrust, self.zoom_level);
+                    render_game(&mut buffer, width, height, game, self.input_state.thrust, self.zoom_level, self.time_warp, self.show_absolute_trajectories);
 
                     buffer.present().unwrap();
                 }
@@ -164,6 +177,8 @@ fn main() {
         input_state: InputState::new(),
         time_accumulator: 0.0,
         zoom_level: 1.0,
+        time_warp: 1.0,
+        show_absolute_trajectories: false, // Start with planet-relative mode
     };
 
     event_loop.run_app(&mut app).unwrap();
