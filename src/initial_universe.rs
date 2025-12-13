@@ -9,6 +9,7 @@ const BEN_TEXTURE_BYTES: &[u8] = include_bytes!("../resources/ben.png");
 const EARTH_TEXTURE_BYTES: &[u8] = include_bytes!("../resources/earth.png");
 const MARTY_TEXTURE_BYTES: &[u8] = include_bytes!("../resources/marty.png");
 const SHIRLEY_TEXTURE_BYTES: &[u8] = include_bytes!("../resources/shirley.png");
+const PUCKMAN_TEXTURE_BYTES: &[u8] = include_bytes!("../resources/puckman.png");
 
 /// Calculate stable orbital position and velocity around a center body
 /// Returns (position, velocity) relative to the center body
@@ -100,13 +101,25 @@ pub fn create_universe() -> Game {
     );
 
     // Shirley orbiting Marty (small and light moon)
-    let shirley_orbit_radius = 800.0;
-    let shirley_mass = 5e10;
+    let shirley_orbit_radius = 1000.0;
+    let shirley_mass = 5e9; // Much lighter (1/10th of before)
     let (shirley_position, shirley_velocity) = calculate_stable_orbit(
         marty_position,
         marty_velocity,
         marty_mass,
         shirley_orbit_radius,
+        0.0, // circular orbit
+        big_gravity,
+    );
+
+    // Puckman orbiting Marty (another moon, slightly larger and further out)
+    let puckman_orbit_radius = 2000.0; // Much further away
+    let puckman_mass = 7e9; // Much lighter
+    let (puckman_position, puckman_velocity) = calculate_stable_orbit(
+        marty_position,
+        marty_velocity,
+        marty_mass,
+        puckman_orbit_radius,
         0.0, // circular orbit
         big_gravity,
     );
@@ -146,7 +159,7 @@ pub fn create_universe() -> Game {
         ben_velocity,
         0xFF8040 // orange fallback color
     )
-    .with_description("A slightly eccentric planet that originated from outside the solar system but was captured by the Sun's gravity.".to_string());
+    .with_description("A slightly eccentric planet that was originally an exoplanet but was captured by the Sun's gravity.".to_string());
 
     if let Ok(texture) = Texture::load_from_bytes(BEN_TEXTURE_BYTES) {
         ben_planet = ben_planet.with_texture(texture);
@@ -182,6 +195,21 @@ pub fn create_universe() -> Game {
         shirley_moon = shirley_moon.with_texture(texture);
     }
 
+    // Load Puckman moon texture from embedded bytes
+    let mut puckman_moon = Planet::new(
+        "Puckman".to_string(),
+        55.0, // Slightly larger than Shirley
+        puckman_mass,
+        puckman_position,
+        puckman_velocity,
+        0xFFFF00 // yellow fallback color
+    )
+    .with_description("The second moon of Marty, larger and further out than Shirley. Puckman has a distinctive circular shape.".to_string());
+
+    if let Ok(texture) = Texture::load_from_bytes(PUCKMAN_TEXTURE_BYTES) {
+        puckman_moon = puckman_moon.with_texture(texture);
+    }
+
     let planets = vec![
         Planet::new(
             "Sun".to_string(),
@@ -196,6 +224,7 @@ pub fn create_universe() -> Game {
         ben_planet,
         marty_planet,
         shirley_moon,
+        puckman_moon,
         Planet::new(
             "Moon".to_string(),
             20.0,
@@ -204,7 +233,7 @@ pub fn create_universe() -> Game {
             moon_velocity,
             0xAAAAAA // gray
         )
-        .with_description("Earths natural satellite, but not for long. The earth-moon system is very unstable.".to_string()),
+        .with_description("Earths only natural satellite, but not for long. The earth-moon system is very unstable.".to_string()),
     ];
 
     let player = Player::new(
