@@ -1,4 +1,5 @@
 use crate::{planet::Planet, player::Player, vector2::Vector2};
+use std::collections::VecDeque;
 
 // Trajectory prediction constants
 const TRAJECTORY_NUM_STEPS: usize = 100000;
@@ -13,11 +14,11 @@ pub struct Game {
 }
 
 pub struct CachedTrajectories {
-    pub player_positions: Vec<Vector2>,
-    pub player_velocities: Vec<Vector2>,
-    pub player_rotations: Vec<f64>,
-    pub planet_positions: Vec<Vec<Vector2>>,
-    pub planet_velocities: Vec<Vec<Vector2>>,
+    pub player_positions: VecDeque<Vector2>,
+    pub player_velocities: VecDeque<Vector2>,
+    pub player_rotations: VecDeque<f64>,
+    pub planet_positions: Vec<VecDeque<Vector2>>,
+    pub planet_velocities: Vec<VecDeque<Vector2>>,
     pub is_valid: bool,
 }
 
@@ -28,9 +29,9 @@ impl Game {
             planets,
             player,
             cached_trajectories: CachedTrajectories {
-                player_positions: Vec::new(),
-                player_velocities: Vec::new(),
-                player_rotations: Vec::new(),
+                player_positions: VecDeque::new(),
+                player_velocities: VecDeque::new(),
+                player_rotations: VecDeque::new(),
                 planet_positions: Vec::new(),
                 planet_velocities: Vec::new(),
                 is_valid: false,
@@ -51,30 +52,30 @@ impl Game {
             planets: self.planets.clone(),
             player: self.player,
             cached_trajectories: CachedTrajectories {
-                player_positions: Vec::new(),
-                player_velocities: Vec::new(),
-                player_rotations: Vec::new(),
+                player_positions: VecDeque::new(),
+                player_velocities: VecDeque::new(),
+                player_rotations: VecDeque::new(),
                 planet_positions: Vec::new(),
                 planet_velocities: Vec::new(),
                 is_valid: false,
             },
         };
 
-        let mut player_positions = Vec::with_capacity(num_steps);
-        let mut player_velocities = Vec::with_capacity(num_steps);
-        let mut player_rotations = Vec::with_capacity(num_steps);
-        let mut planet_positions: Vec<Vec<Vector2>> = vec![Vec::with_capacity(num_steps); self.planets.len()];
-        let mut planet_velocities: Vec<Vec<Vector2>> = vec![Vec::with_capacity(num_steps); self.planets.len()];
+        let mut player_positions = VecDeque::with_capacity(num_steps);
+        let mut player_velocities = VecDeque::with_capacity(num_steps);
+        let mut player_rotations = VecDeque::with_capacity(num_steps);
+        let mut planet_positions: Vec<VecDeque<Vector2>> = vec![VecDeque::with_capacity(num_steps); self.planets.len()];
+        let mut planet_velocities: Vec<VecDeque<Vector2>> = vec![VecDeque::with_capacity(num_steps); self.planets.len()];
 
         // Simulate forward and collect positions
         for _ in 0..num_steps {
-            player_positions.push(predicted_game.player.position);
-            player_velocities.push(predicted_game.player.velocity);
-            player_rotations.push(predicted_game.player.rotation);
+            player_positions.push_back(predicted_game.player.position);
+            player_velocities.push_back(predicted_game.player.velocity);
+            player_rotations.push_back(predicted_game.player.rotation);
 
             for (i, planet) in predicted_game.planets.iter().enumerate() {
-                planet_positions[i].push(planet.position);
-                planet_velocities[i].push(planet.velocity);
+                planet_positions[i].push_back(planet.position);
+                planet_velocities[i].push_back(planet.velocity);
             }
 
             // Use substeps for accurate physics
@@ -110,21 +111,23 @@ impl Game {
             planet.velocity = self.cached_trajectories.planet_velocities[i][0];
         }
 
-        // Remove the positions we just used (index 0)
-        self.cached_trajectories.player_positions.remove(0);
-        self.cached_trajectories.player_velocities.remove(0);
-        self.cached_trajectories.player_rotations.remove(0);
+        // Remove the positions we just used (index 0) - O(1) with VecDeque
+        self.cached_trajectories.player_positions.pop_front();
+        self.cached_trajectories.player_velocities.pop_front();
+        self.cached_trajectories.player_rotations.pop_front();
 
         for i in 0..self.planets.len() {
-            self.cached_trajectories.planet_positions[i].remove(0);
-            self.cached_trajectories.planet_velocities[i].remove(0);
+            self.cached_trajectories.planet_positions[i].pop_front();
+            self.cached_trajectories.planet_velocities[i].pop_front();
         }
-
-        // Extend trajectory by one step to maintain constant look-ahead length
-        self.extend_trajectory_one_step();
     }
 
-    fn extend_trajectory_one_step(&mut self) {
+    pub fn extend_trajectories(&mut self, num_steps: usize) {
+        // Batch extend multiple steps at once for better performance
+        if num_steps == 0 {
+            return;
+        }
+
         let dt = TRAJECTORY_DT;
         let substeps = TRAJECTORY_SUBSTEPS;
 
@@ -141,9 +144,9 @@ impl Game {
                 mass: self.player.mass,
             },
             cached_trajectories: CachedTrajectories {
-                player_positions: Vec::new(),
-                player_velocities: Vec::new(),
-                player_rotations: Vec::new(),
+                player_positions: VecDeque::new(),
+                player_velocities: VecDeque::new(),
+                player_rotations: VecDeque::new(),
                 planet_positions: Vec::new(),
                 planet_velocities: Vec::new(),
                 is_valid: false,
@@ -156,21 +159,25 @@ impl Game {
             predicted_game.planets[i].velocity = self.cached_trajectories.planet_velocities[i][last_idx];
         }
 
-        // Simulate one step forward with substeps
-        for _ in 0..substeps {
-            predicted_game.update(dt / substeps as f64);
-        }
+        // Simulate multiple steps forward
+        for _ in 0..num_steps {
+            // Use substeps for accurate physics
+            for _ in 0..substeps {
+                predicted_game.update(dt / substeps as f64);
+            }
 
-        // Append the new state
-        self.cached_trajectories.player_positions.push(predicted_game.player.position);
-        self.cached_trajectories.player_velocities.push(predicted_game.player.velocity);
-        self.cached_trajectories.player_rotations.push(predicted_game.player.rotation);
+            // Append the new state
+            self.cached_trajectories.player_positions.push_back(predicted_game.player.position);
+            self.cached_trajectories.player_velocities.push_back(predicted_game.player.velocity);
+            self.cached_trajectories.player_rotations.push_back(predicted_game.player.rotation);
 
-        for i in 0..predicted_game.planets.len() {
-            self.cached_trajectories.planet_positions[i].push(predicted_game.planets[i].position);
-            self.cached_trajectories.planet_velocities[i].push(predicted_game.planets[i].velocity);
+            for i in 0..predicted_game.planets.len() {
+                self.cached_trajectories.planet_positions[i].push_back(predicted_game.planets[i].position);
+                self.cached_trajectories.planet_velocities[i].push_back(predicted_game.planets[i].velocity);
+            }
         }
     }
+
 
     pub fn update(&mut self, dt: f64) {
         // Calculate all accelerations for planets

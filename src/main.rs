@@ -7,6 +7,8 @@ mod player;
 mod render;
 mod initial_universe;
 mod keyboard_input;
+mod texture;
+mod sprite_renderer;
 
 use winit::application::ApplicationHandler;
 use winit::event::{WindowEvent, MouseScrollDelta, ElementState};
@@ -78,7 +80,7 @@ impl ApplicationHandler for App {
                         }
                         PhysicalKey::Code(KeyCode::Period) => {
                             self.time_warp *= 2.0;
-                            self.time_warp = self.time_warp.min(32.0);
+                            self.time_warp = self.time_warp.min(256.0);
                         }
                         PhysicalKey::Code(KeyCode::Comma) => {
                             self.time_warp /= 2.0;
@@ -124,9 +126,17 @@ impl ApplicationHandler for App {
                     // Accumulate time with time warp multiplier and advance trajectory steps
                     self.time_accumulator += dt * self.time_warp;
 
-                    while self.time_accumulator >= TRAJECTORY_DT {
-                        game.advance_trajectory();
-                        self.time_accumulator -= TRAJECTORY_DT;
+                    let steps_to_advance = (self.time_accumulator / TRAJECTORY_DT) as usize;
+                    if steps_to_advance > 0 {
+                        // Advance multiple steps at once
+                        for _ in 0..steps_to_advance {
+                            game.advance_trajectory();
+                        }
+
+                        // Batch extend trajectories to maintain look-ahead
+                        game.extend_trajectories(steps_to_advance);
+
+                        self.time_accumulator -= steps_to_advance as f64 * TRAJECTORY_DT;
                     }
                 }
 

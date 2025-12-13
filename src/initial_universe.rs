@@ -2,6 +2,11 @@ use crate::game::Game;
 use crate::planet::Planet;
 use crate::player::Player;
 use crate::vector2::Vector2;
+use crate::texture::Texture;
+
+// Embed planet textures at compile time
+const BEN_TEXTURE_BYTES: &[u8] = include_bytes!("../resources/ben.png");
+const EARTH_TEXTURE_BYTES: &[u8] = include_bytes!("../resources/earth.png");
 
 /// Calculate stable orbital position and velocity around a center body
 /// Returns (position, velocity) relative to the center body
@@ -57,6 +62,18 @@ pub fn create_universe() -> Game {
         big_gravity,
     );
 
+    // Ben planet orbiting Sun (further out and larger)
+    let ben_orbit_radius = 25000.0;
+    let ben_mass = 8e12;
+    let (ben_position, ben_velocity) = calculate_stable_orbit(
+        sun_position,
+        sun_velocity,
+        sun_mass,
+        ben_orbit_radius,
+        0.0, // circular orbit
+        big_gravity,
+    );
+
     // Moon orbiting Earth
     let moon_orbit_radius = 1000.0;
     let (moon_position, moon_velocity) = calculate_stable_orbit(
@@ -79,6 +96,34 @@ pub fn create_universe() -> Game {
         big_gravity,
     );
 
+    // Load Earth texture from embedded bytes
+    let mut earth = Planet::new(
+        "Earth".to_string(),
+        150.0,
+        earth_mass,
+        earth_position,
+        earth_velocity,
+        0x4040FF // blue fallback color
+    );
+
+    if let Ok(texture) = Texture::load_from_bytes(EARTH_TEXTURE_BYTES) {
+        earth = earth.with_texture(texture);
+    }
+
+    // Load Ben planet texture from embedded bytes
+    let mut ben_planet = Planet::new(
+        "Ben".to_string(),
+        250.0, // Larger radius than Earth (150)
+        ben_mass,
+        ben_position,
+        ben_velocity,
+        0xFF8040 // orange fallback color
+    );
+
+    if let Ok(texture) = Texture::load_from_bytes(BEN_TEXTURE_BYTES) {
+        ben_planet = ben_planet.with_texture(texture);
+    }
+
     let planets = vec![
         Planet::new(
             "Sun".to_string(),
@@ -88,14 +133,8 @@ pub fn create_universe() -> Game {
             sun_velocity,
             0xFFFF00 // yellow
         ),
-        Planet::new(
-            "Earth".to_string(),
-            150.0,
-            earth_mass,
-            earth_position,
-            earth_velocity,
-            0x4040FF // blue
-        ),
+        earth,
+        ben_planet,
         Planet::new(
             "Moon".to_string(),
             20.0,

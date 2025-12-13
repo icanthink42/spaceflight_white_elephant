@@ -1,5 +1,6 @@
 use crate::game::Game;
 use crate::vector2::Vector2;
+use crate::sprite_renderer::draw_circular_sprite;
 
 pub fn render_game(
     buffer: &mut [u32],
@@ -33,7 +34,12 @@ pub fn render_game(
         let screen_y = ((planet.position.y - camera_y) * scale) as i32 + center_y as i32;
         let radius = (planet.radius * scale).max(5.0) as i32;
 
-        draw_circle(buffer, width, height, screen_x, screen_y, radius, planet.color);
+        // Draw textured planet if texture available, otherwise solid color
+        if let Some(texture) = &planet.texture {
+            draw_circular_sprite(buffer, width, height, screen_x, screen_y, radius, texture);
+        } else {
+            draw_circle(buffer, width, height, screen_x, screen_y, radius, planet.color);
+        }
     }
 
     // Draw player as rotated rectangle

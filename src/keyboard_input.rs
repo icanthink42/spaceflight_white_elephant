@@ -48,7 +48,7 @@ impl InputState {
 
         // Apply thrust force if thrusting (changes trajectory)
         if self.thrust {
-            let thrust_force = 5.0; // thrust force magnitude
+            let thrust_force = 25.0; // thrust force magnitude
             let thrust_x = game.player.rotation.sin() * thrust_force;
             let thrust_y = -game.player.rotation.cos() * thrust_force;
 
