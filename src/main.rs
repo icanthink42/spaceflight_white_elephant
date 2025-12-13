@@ -9,9 +9,10 @@ mod initial_universe;
 mod keyboard_input;
 
 use winit::application::ApplicationHandler;
-use winit::event::WindowEvent;
+use winit::event::{WindowEvent, MouseScrollDelta, ElementState};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
+use winit::keyboard::{KeyCode, PhysicalKey};
 use std::sync::Arc;
 use std::time::Instant;
 use softbuffer::{Context, Surface};
@@ -27,6 +28,7 @@ struct App {
     last_update: Option<Instant>,
     input_state: InputState,
     time_accumulator: f64,
+    zoom_level: f64,
 }
 
 impl ApplicationHandler for App {
@@ -62,6 +64,39 @@ impl ApplicationHandler for App {
             }
             WindowEvent::KeyboardInput { event, .. } => {
                 self.input_state.handle_key_event(&event);
+
+                // Handle zoom keys
+                if event.state == ElementState::Pressed {
+                    match event.physical_key {
+                        PhysicalKey::Code(KeyCode::Equal) | PhysicalKey::Code(KeyCode::NumpadAdd) => {
+                            self.zoom_level *= 1.2;
+                        }
+                        PhysicalKey::Code(KeyCode::Minus) | PhysicalKey::Code(KeyCode::NumpadSubtract) => {
+                            self.zoom_level /= 1.2;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            WindowEvent::MouseWheel { delta, .. } => {
+                let zoom_factor = match delta {
+                    MouseScrollDelta::LineDelta(_, y) => {
+                        if y > 0.0 {
+                            1.1_f64.powf(y as f64)
+                        } else {
+                            0.9_f64.powf(-y as f64)
+                        }
+                    }
+                    MouseScrollDelta::PixelDelta(pos) => {
+                        let y = pos.y;
+                        if y > 0.0 {
+                            1.0 + y / 100.0
+                        } else {
+                            1.0 / (1.0 - y / 100.0)
+                        }
+                    }
+                };
+                self.zoom_level *= zoom_factor;
             }
             WindowEvent::RedrawRequested => {
                 // Update game state
@@ -102,7 +137,7 @@ impl ApplicationHandler for App {
 
                     let mut buffer = surface.buffer_mut().unwrap();
 
-                    render_game(&mut buffer, width, height, game, self.input_state.thrust);
+                    render_game(&mut buffer, width, height, game, self.input_state.thrust, self.zoom_level);
 
                     buffer.present().unwrap();
                 }
@@ -128,6 +163,7 @@ fn main() {
         last_update: None,
         input_state: InputState::new(),
         time_accumulator: 0.0,
+        zoom_level: 1.0,
     };
 
     event_loop.run_app(&mut app).unwrap();

@@ -6,6 +6,7 @@ pub fn render_game(
     height: usize,
     game: &Game,
     is_thrusting: bool,
+    zoom_level: f64,
 ) {
     // Clear to black (space)
     buffer.fill(0x000000);
@@ -17,8 +18,8 @@ pub fn render_game(
     let camera_x = game.player.position.x;
     let camera_y = game.player.position.y;
 
-    // Scale: 1 pixel = 1 unit
-    let scale = 1.0;
+    // Scale: 1 pixel = 1 unit, multiplied by zoom level
+    let scale = 1.0 * zoom_level;
 
     // Draw orbital predictions
     draw_orbital_predictions(buffer, width, height, game, camera_x, camera_y, scale, center_x, center_y);
