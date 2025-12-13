@@ -9,9 +9,10 @@ mod initial_universe;
 mod keyboard_input;
 mod texture;
 mod sprite_renderer;
+mod font;
 
 use winit::application::ApplicationHandler;
-use winit::event::{WindowEvent, MouseScrollDelta, ElementState};
+use winit::event::{WindowEvent, MouseScrollDelta, ElementState, MouseButton};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
 use winit::keyboard::{KeyCode, PhysicalKey};
@@ -33,6 +34,8 @@ struct App {
     zoom_level: f64,
     time_warp: f64,
     show_absolute_trajectories: bool,
+    selected_planet: Option<usize>,
+    mouse_pos: (f64, f64),
 }
 
 impl ApplicationHandler for App {
@@ -113,6 +116,55 @@ impl ApplicationHandler for App {
                 };
                 self.zoom_level *= zoom_factor;
             }
+            WindowEvent::CursorMoved { position, .. } => {
+                self.mouse_pos = (position.x, position.y);
+            }
+            WindowEvent::MouseInput { state: ElementState::Pressed, button: MouseButton::Left, .. } => {
+                if let (Some(window), Some(game)) = (&self.window, &self.game) {
+                    let size = window.inner_size();
+                    let width = size.width as f64;
+                    let height = size.height as f64;
+
+                    // Check if clicking close button on info window
+                    if let Some(_planet_idx) = self.selected_planet {
+                        let info_x = 50.0;
+                        let info_y = 50.0;
+                        let close_x = info_x + 280.0;
+                        let close_y = info_y + 5.0;
+
+                        if self.mouse_pos.0 >= close_x && self.mouse_pos.0 <= close_x + 15.0 &&
+                           self.mouse_pos.1 >= close_y && self.mouse_pos.1 <= close_y + 15.0 {
+                            self.selected_planet = None;
+                            return;
+                        }
+                    }
+
+                    // Check if clicking on a planet
+                    let center_x = width / 2.0;
+                    let center_y = height / 2.0;
+                    let camera_x = game.player.position.x;
+                    let camera_y = game.player.position.y;
+                    let scale = self.zoom_level;
+
+                    for (i, planet) in game.planets.iter().enumerate() {
+                        let screen_x = ((planet.position.x - camera_x) * scale) + center_x;
+                        let screen_y = ((planet.position.y - camera_y) * scale) + center_y;
+                        let radius = (planet.radius * scale).max(5.0);
+
+                        let dx = self.mouse_pos.0 - screen_x;
+                        let dy = self.mouse_pos.1 - screen_y;
+                        let dist_sq = dx * dx + dy * dy;
+
+                        if dist_sq <= radius * radius {
+                            self.selected_planet = Some(i);
+                            return;
+                        }
+                    }
+
+                    // Click elsewhere closes info window
+                    self.selected_planet = None;
+                }
+            }
             WindowEvent::RedrawRequested => {
                 // Update game state
                 if let (Some(game), Some(last_update)) = (&mut self.game, &mut self.last_update) {
@@ -160,7 +212,7 @@ impl ApplicationHandler for App {
 
                     let mut buffer = surface.buffer_mut().unwrap();
 
-                    render_game(&mut buffer, width, height, game, self.input_state.thrust, self.zoom_level, self.time_warp, self.show_absolute_trajectories);
+                    render_game(&mut buffer, width, height, game, self.input_state.thrust, self.zoom_level, self.time_warp, self.show_absolute_trajectories, self.selected_planet);
 
                     buffer.present().unwrap();
                 }
@@ -189,6 +241,8 @@ fn main() {
         zoom_level: 1.0,
         time_warp: 1.0,
         show_absolute_trajectories: false, // Start with planet-relative mode
+        selected_planet: None,
+        mouse_pos: (0.0, 0.0),
     };
 
     event_loop.run_app(&mut app).unwrap();

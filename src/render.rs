@@ -1,6 +1,7 @@
 use crate::game::Game;
 use crate::vector2::Vector2;
 use crate::sprite_renderer::draw_circular_sprite;
+use crate::font::draw_text;
 
 pub fn render_game(
     buffer: &mut [u32],
@@ -11,6 +12,7 @@ pub fn render_game(
     zoom_level: f64,
     time_warp: f64,
     show_absolute_trajectories: bool,
+    selected_planet: Option<usize>,
 ) {
     // Clear to black (space)
     buffer.fill(0x000000);
@@ -78,75 +80,87 @@ pub fn render_game(
         "Planet-Relative Trajectories"
     };
     draw_text(buffer, width, height, mode_text, 10, 10, 0xFFFFFF);
-}
 
-fn draw_text(buffer: &mut [u32], width: usize, height: usize, text: &str, x: usize, y: usize, color: u32) {
-    // Simple 5x7 pixel font for basic text rendering
-    let mut current_x = x;
-
-    for ch in text.chars() {
-        draw_char(buffer, width, height, ch, current_x, y, color);
-        current_x += 6; // 5 pixels + 1 spacing
-    }
-}
-
-fn draw_char(buffer: &mut [u32], width: usize, height: usize, ch: char, x: usize, y: usize, color: u32) {
-    let glyph = get_glyph(ch);
-
-    for (row, &line) in glyph.iter().enumerate() {
-        for col in 0..5 {
-            if line & (1 << (4 - col)) != 0 {
-                let px = x + col;
-                let py = y + row;
-                if px < width && py < height {
-                    buffer[py * width + px] = color;
-                }
-            }
+    // Draw planet info window if a planet is selected
+    if let Some(planet_idx) = selected_planet {
+        if planet_idx < game.planets.len() {
+            draw_planet_info(buffer, width, height, &game.planets[planet_idx]);
         }
     }
 }
 
-fn get_glyph(ch: char) -> &'static [u8; 7] {
-    match ch {
-        '0' => &[0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110],
-        '1' => &[0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110],
-        '2' => &[0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111],
-        '3' => &[0b11110, 0b00001, 0b00001, 0b01110, 0b00001, 0b00001, 0b11110],
-        '4' => &[0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010],
-        '5' => &[0b11111, 0b10000, 0b11110, 0b00001, 0b00001, 0b10001, 0b01110],
-        '6' => &[0b00110, 0b01000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110],
-        '7' => &[0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000],
-        '8' => &[0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110],
-        '9' => &[0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b01100],
-        'A' => &[0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001],
-        'P' => &[0b11110, 0b10001, 0b10001, 0b11110, 0b10000, 0b10000, 0b10000],
-        'R' => &[0b11110, 0b10001, 0b10001, 0b11110, 0b10100, 0b10010, 0b10001],
-        'T' => &[0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100],
-        'W' => &[0b10001, 0b10001, 0b10001, 0b10101, 0b10101, 0b11011, 0b10001],
-        'a' => &[0b00000, 0b00000, 0b01110, 0b00001, 0b01111, 0b10001, 0b01111],
-        'b' => &[0b10000, 0b10000, 0b11110, 0b10001, 0b10001, 0b10001, 0b11110],
-        'c' => &[0b00000, 0b00000, 0b01110, 0b10000, 0b10000, 0b10000, 0b01110],
-        'e' => &[0b00000, 0b00000, 0b01110, 0b10001, 0b11111, 0b10000, 0b01110],
-        'i' => &[0b00100, 0b00000, 0b01100, 0b00100, 0b00100, 0b00100, 0b01110],
-        'j' => &[0b00000, 0b00000, 0b00110, 0b00010, 0b00010, 0b10010, 0b01100],
-        'l' => &[0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110],
-        'm' => &[0b00000, 0b00000, 0b11010, 0b10101, 0b10101, 0b10001, 0b10001],
-        'n' => &[0b00000, 0b00000, 0b10110, 0b11001, 0b10001, 0b10001, 0b10001],
-        'o' => &[0b00000, 0b00000, 0b01110, 0b10001, 0b10001, 0b10001, 0b01110],
-        'p' => &[0b00000, 0b00000, 0b11110, 0b10001, 0b11110, 0b10000, 0b10000],
-        'r' => &[0b00000, 0b00000, 0b10110, 0b11001, 0b10000, 0b10000, 0b10000],
-        's' => &[0b00000, 0b00000, 0b01110, 0b10000, 0b01110, 0b00001, 0b11110],
-        't' => &[0b00100, 0b00100, 0b11110, 0b00100, 0b00100, 0b00100, 0b00010],
-        'u' => &[0b00000, 0b00000, 0b10001, 0b10001, 0b10001, 0b10011, 0b01101],
-        'v' => &[0b00000, 0b00000, 0b10001, 0b10001, 0b10001, 0b01010, 0b00100],
-        'x' => &[0b00000, 0b00000, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001],
-        'y' => &[0b00000, 0b00000, 0b10001, 0b10001, 0b01111, 0b00001, 0b01110],
-        '-' => &[0b00000, 0b00000, 0b00000, 0b11111, 0b00000, 0b00000, 0b00000],
-        '.' => &[0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b01100, 0b01100],
-        ':' => &[0b00000, 0b01100, 0b01100, 0b00000, 0b01100, 0b01100, 0b00000],
-        ' ' => &[0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000],
-        _ => &[0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000], // Unknown char = space
+fn draw_planet_info(buffer: &mut [u32], width: usize, height: usize, planet: &crate::planet::Planet) {
+    let info_x = 50;
+    let info_y = 50;
+    let info_width = 300;
+    let info_height = 150;
+
+    // Draw background box
+    for y in info_y..info_y + info_height {
+        for x in info_x..info_x + info_width {
+            if x < width && y < height {
+                buffer[y * width + x] = 0x222222;
+            }
+        }
     }
+
+    // Draw border
+    for x in info_x..info_x + info_width {
+        if x < width {
+            if info_y < height {
+                buffer[info_y * width + x] = 0xFFFFFF;
+            }
+            if info_y + info_height - 1 < height {
+                buffer[(info_y + info_height - 1) * width + x] = 0xFFFFFF;
+            }
+        }
+    }
+    for y in info_y..info_y + info_height {
+        if y < height {
+            if info_x < width {
+                buffer[y * width + info_x] = 0xFFFFFF;
+            }
+            if info_x + info_width - 1 < width {
+                buffer[y * width + info_x + info_width - 1] = 0xFFFFFF;
+            }
+        }
+    }
+
+    // Draw close button (X)
+    let close_x = info_x + info_width - 20;
+    let close_y = info_y + 5;
+    draw_text(buffer, width, height, "X", close_x, close_y, 0xFF0000);
+
+    // Draw planet info
+    let mut y_offset = info_y + 20;
+
+    // Planet name
+    draw_text(buffer, width, height, &planet.name, info_x + 10, y_offset, 0xFFFFFF);
+    y_offset += 20;
+
+    // Divider
+    for x in info_x + 10..info_x + info_width - 10 {
+        if x < width && y_offset < height {
+            buffer[y_offset * width + x] = 0x888888;
+        }
+    }
+    y_offset += 15;
+
+    // Mass
+    draw_text(buffer, width, height, &format!("Mass: {:.2e} kg", planet.mass), info_x + 10, y_offset, 0xCCCCCC);
+    y_offset += 15;
+
+    // Radius
+    draw_text(buffer, width, height, &format!("Radius: {:.0} units", planet.radius), info_x + 10, y_offset, 0xCCCCCC);
+    y_offset += 15;
+
+    // Position
+    draw_text(buffer, width, height, &format!("Position: ({:.0}, {:.0})", planet.position.x, planet.position.y), info_x + 10, y_offset, 0xCCCCCC);
+    y_offset += 15;
+
+    // Velocity
+    let speed = (planet.velocity.x * planet.velocity.x + planet.velocity.y * planet.velocity.y).sqrt();
+    draw_text(buffer, width, height, &format!("Velocity: {:.2} units/s", speed), info_x + 10, y_offset, 0xCCCCCC);
 }
 
 fn draw_orbital_predictions(
