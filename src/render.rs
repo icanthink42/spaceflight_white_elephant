@@ -93,7 +93,27 @@ fn draw_planet_info(buffer: &mut [u32], width: usize, height: usize, planet: &cr
     let info_x = 50;
     let info_y = 50;
     let info_width = 300;
-    let info_height = 150;
+
+    // Calculate height based on content
+    let has_texture = planet.texture.is_some();
+    let texture_size = 120; // Size of the displayed texture
+    let has_description = !planet.description.is_empty();
+
+    // Calculate description line count (assuming ~40 chars per line at 6 pixels per char)
+    let chars_per_line = (info_width - 20) / 6;
+    let description_lines = if has_description {
+        (planet.description.len() + chars_per_line - 1) / chars_per_line
+    } else {
+        0
+    };
+
+    let mut info_height = 150; // Base height
+    if has_texture {
+        info_height += texture_size + 15;
+    }
+    if has_description {
+        info_height += description_lines * 10 + 15;
+    }
 
     // Draw background box
     for y in info_y..info_y + info_height {
@@ -146,6 +166,36 @@ fn draw_planet_info(buffer: &mut [u32], width: usize, height: usize, planet: &cr
     }
     y_offset += 15;
 
+    // Draw planet texture if available
+    if let Some(texture) = &planet.texture {
+        let texture_center_x = (info_x + info_width / 2) as i32;
+        let texture_center_y = (y_offset + texture_size / 2) as i32;
+        draw_circular_sprite(buffer, width, height, texture_center_x, texture_center_y, texture_size as i32 / 2, texture);
+        y_offset += texture_size + 15;
+
+        // Another divider after the texture
+        for x in info_x + 10..info_x + info_width - 10 {
+            if x < width && y_offset < height {
+                buffer[y_offset * width + x] = 0x888888;
+            }
+        }
+        y_offset += 15;
+    }
+
+    // Draw description if available
+    if has_description {
+        draw_wrapped_text(buffer, width, height, &planet.description, info_x + 10, y_offset, info_width - 20, 0xAADDFF);
+        y_offset += description_lines * 10 + 15;
+
+        // Divider after description
+        for x in info_x + 10..info_x + info_width - 10 {
+            if x < width && y_offset < height {
+                buffer[y_offset * width + x] = 0x888888;
+            }
+        }
+        y_offset += 10;
+    }
+
     // Mass
     draw_text(buffer, width, height, &format!("Mass: {:.2e} kg", planet.mass), info_x + 10, y_offset, 0xCCCCCC);
     y_offset += 15;
@@ -161,6 +211,32 @@ fn draw_planet_info(buffer: &mut [u32], width: usize, height: usize, planet: &cr
     // Velocity
     let speed = (planet.velocity.x * planet.velocity.x + planet.velocity.y * planet.velocity.y).sqrt();
     draw_text(buffer, width, height, &format!("Velocity: {:.2} units/s", speed), info_x + 10, y_offset, 0xCCCCCC);
+}
+
+fn draw_wrapped_text(buffer: &mut [u32], width: usize, height: usize, text: &str, x: usize, y: usize, max_width: usize, color: u32) {
+    let chars_per_line = max_width / 6; // 6 pixels per character
+    let mut current_line = 0;
+    let mut chars_in_line = 0;
+    let mut line_start = 0;
+
+    for (i, ch) in text.chars().enumerate() {
+        chars_in_line += 1;
+
+        // Check if we need to wrap
+        if chars_in_line >= chars_per_line || ch == '\n' {
+            let line = &text[line_start..i + ch.len_utf8()];
+            draw_text(buffer, width, height, line, x, y + current_line * 10, color);
+            current_line += 1;
+            chars_in_line = 0;
+            line_start = i + ch.len_utf8();
+        }
+    }
+
+    // Draw remaining text
+    if line_start < text.len() {
+        let line = &text[line_start..];
+        draw_text(buffer, width, height, line, x, y + current_line * 10, color);
+    }
 }
 
 fn draw_orbital_predictions(
