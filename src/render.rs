@@ -45,14 +45,14 @@ pub fn render_game(
     }
 
     // Draw player as rotated rectangle
-    draw_rotated_rect(
+    draw_rotated_triangle(
         buffer,
         width,
         height,
         center_x as i32,
         center_y as i32,
         8,
-        4,
+        6,
         game.player.rotation,
         0xFF0000
     );
@@ -463,6 +463,54 @@ fn draw_rotated_rect(
         }
     }
 }
+
+fn draw_rotated_triangle(
+    buffer: &mut [u32],
+    width: usize,
+    height: usize,
+    cx: i32,
+    cy: i32,
+    length: i32,     // distance from center to tip
+    half_base: i32,  // half the width of the base
+    rotation: f64,
+    color: u32,
+) {
+    let adj_rot:f64 = rotation + 1.5707;
+    let cos_r = adj_rot.cos();
+    let sin_r = adj_rot.sin();
+
+    // Triangle in local space:
+    // Tip at ( length, 0 )
+    // Base left  at ( -length, -half_base )
+    // Base right at ( -length,  half_base )
+
+    // Bounding box in local space
+    for ly in -half_base..=half_base {
+        for lx in -length..=length {
+            // Half-space test for triangle pointing +X
+            // Line 1: left edge
+            let inside_left = (lx + length) * half_base >= ly * (2 * length);
+            // Line 2: right edge
+            let inside_right = (lx + length) * half_base >= -ly * (2 * length);
+            // Line 3: behind the tip
+            let inside_back = lx <= length;
+
+            if inside_left && inside_right && inside_back {
+                // Rotate
+                let rx = (lx as f64 * cos_r - ly as f64 * sin_r) as i32;
+                let ry = (lx as f64 * sin_r + ly as f64 * cos_r) as i32;
+
+                let px = cx + rx;
+                let py = cy + ry;
+
+                if px >= 0 && px < width as i32 && py >= 0 && py < height as i32 {
+                    buffer[py as usize * width + px as usize] = color;
+                }
+            }
+        }
+    }
+}
+
 
 fn draw_thrust_flame(
     buffer: &mut [u32],
