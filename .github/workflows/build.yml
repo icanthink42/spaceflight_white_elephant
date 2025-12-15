@@ -1,0 +1,35 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-native:
+    name: Test Native Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Check native build
+        run: cargo check --features native
+      - name: Build native release
+        run: cargo build --release --features native
+
+  test-wasm:
+    name: Test WASM Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Add WASM target
+        run: rustup target add wasm32-unknown-unknown
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Check WASM build
+        run: cargo check --target wasm32-unknown-unknown --lib
+      - name: Build WASM release
+        run: wasm-pack build --target web --out-dir www/pkg --release
+

@@ -1,6 +1,9 @@
-use winit::event::{KeyEvent, ElementState};
-use winit::keyboard::{KeyCode, PhysicalKey};
 use crate::game::Game;
+
+#[cfg(not(target_arch = "wasm32"))]
+use winit::event::{KeyEvent, ElementState};
+#[cfg(not(target_arch = "wasm32"))]
+use winit::keyboard::{KeyCode, PhysicalKey};
 
 pub struct InputState {
     pub rotate_left: bool,
@@ -17,6 +20,7 @@ impl InputState {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn handle_key_event(&mut self, event: &KeyEvent) {
         let pressed = event.state == ElementState::Pressed;
 

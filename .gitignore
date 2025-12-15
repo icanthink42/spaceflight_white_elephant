@@ -1,2 +1,6 @@
 /target
 /windows_build
+/www/pkg
+*.wasm
+.DS_Store
+node_modules

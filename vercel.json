@@ -1,0 +1,21 @@
+{
+  "buildCommand": "curl https://sh.rustup.rs -sSf | sh -s -- -y && export PATH=\"$HOME/.cargo/bin:$PATH\" && rustup target add wasm32-unknown-unknown && cargo install wasm-pack && wasm-pack build --target web --out-dir www/pkg --release",
+  "outputDirectory": "www",
+  "framework": null,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cross-Origin-Embedder-Policy",
+          "value": "require-corp"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        }
+      ]
+    }
+  ]
+}
+

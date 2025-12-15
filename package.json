@@ -1,0 +1,14 @@
+{
+  "name": "spaceflight-elephant",
+  "version": "0.1.0",
+  "description": "2D orbital mechanics simulator",
+  "scripts": {
+    "build": "export PATH=\"$HOME/.cargo/bin:$PATH\" && wasm-pack build --target web --out-dir www/pkg --release",
+    "dev": "export PATH=\"$HOME/.cargo/bin:$PATH\" && wasm-pack build --target web --out-dir www/pkg --dev && cd www && python3 -m http.server 8080",
+    "serve": "cd www && python3 -m http.server 8080"
+  },
+  "keywords": ["wasm", "orbital", "simulation", "rust"],
+  "author": "",
+  "license": "MIT"
+}
+

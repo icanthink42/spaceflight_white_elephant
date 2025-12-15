@@ -1,0 +1,8 @@
+target/
+windows_build/
+.git/
+.gitignore
+*.md
+build_windows.sh
+Cargo.lock
+

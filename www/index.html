@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spaceflight Elephant</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+        }
+
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        #error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff4444;
+            font-size: 18px;
+            text-align: center;
+            display: none;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            max-width: 300px;
+        }
+
+        #controls h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        #controls p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Loading Spaceflight Elephant...</div>
+    <div id="error"></div>
+    <canvas id="canvas"></canvas>
+
+    <div id="controls">
+        <h3>Controls</h3>
+        <p><strong>A/D or ←/→:</strong> Rotate</p>
+        <p><strong>Space/W/↑:</strong> Thrust</p>
+        <p><strong>Mouse Wheel or -/=:</strong> Zoom</p>
+        <p><strong>. / ,:</strong> Time Warp</p>
+        <p><strong>Tab:</strong> Toggle Trajectory Mode</p>
+        <p><strong>Click:</strong> Select Planet</p>
+    </div>
+
+    <script type="module">
+        import init, {
+            init_game,
+            update_and_render,
+            handle_key_down,
+            handle_key_up,
+            handle_mouse_wheel,
+            handle_mouse_click
+        } from './pkg/spaceflight_elephant.js';
+
+        let animationId = null;
+        let canvas = null;
+
+        async function run() {
+            try {
+                // Initialize WASM module
+                await init();
+                console.log('WASM module loaded');
+
+                // Initialize game
+                init_game();
+                console.log('Game initialized');
+
+                // Setup canvas
+                canvas = document.getElementById('canvas');
+                resizeCanvas();
+
+                // Hide loading message
+                document.getElementById('loading').style.display = 'none';
+
+                // Setup event listeners
+                setupEventListeners();
+
+                // Start render loop
+                renderLoop();
+            } catch (err) {
+                console.error('Error initializing:', err);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = 'Error loading game: ' + err.message;
+            }
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        function setupEventListeners() {
+            // Keyboard events
+            window.addEventListener('keydown', (e) => {
+                // Prevent default behavior for game keys
+                if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code)) {
+                    e.preventDefault();
+                }
+                handle_key_down(e.code);
+            });
+
+            window.addEventListener('keyup', (e) => {
+                handle_key_up(e.code);
+            });
+
+            // Mouse wheel for zoom
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                handle_mouse_wheel(e.deltaY);
+            });
+
+            // Mouse click for planet selection
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                handle_mouse_click(x, y, canvas.width, canvas.height);
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+            });
+        }
+
+        function renderLoop() {
+            try {
+                update_and_render('canvas');
+            } catch (err) {
+                console.error('Render error:', err);
+            }
+            animationId = requestAnimationFrame(renderLoop);
+        }
+
+        // Start the application
+        run();
+    </script>
+</body>
+</html>
+
