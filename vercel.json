@@ -1,5 +1,5 @@
 {
-  "buildCommand": "export CARGO_HOME=/tmp/.cargo && export RUSTUP_HOME=/tmp/.rustup && export PATH=\"/tmp/.cargo/bin:$PATH\" && curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path && rustup target add wasm32-unknown-unknown && cargo install wasm-pack && wasm-pack build --target web --out-dir www/pkg --release",
+  "buildCommand": "bash vercel-build.sh",
   "outputDirectory": "www",
   "framework": null,
   "headers": [
