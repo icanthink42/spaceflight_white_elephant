@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Set up Rust environment
+export HOME=/tmp
 export CARGO_HOME=/tmp/.cargo
 export RUSTUP_HOME=/tmp/.rustup
 export PATH="/tmp/.cargo/bin:$PATH"
